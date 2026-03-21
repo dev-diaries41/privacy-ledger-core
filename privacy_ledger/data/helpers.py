@@ -4,10 +4,10 @@ from typing import List
 from uuid import uuid4
 
 from privacy_ledger.schema.events import (
-    PrivacyEvent, Topic, Severity, Scope, ImpactType, Platform
+    Event, Topic, Severity, Scope, ImpactType, Platform
 )
 
-def generate_events(n: int) -> List[PrivacyEvent]:
+def generate_events(n: int) -> List[Event]:
     dummy_actors = ["Acme Corp", "Gov Agency", "Privacy Org", "Unknown Entity"]
     dummy_sources = [
         "https://example.com/news",
@@ -17,7 +17,7 @@ def generate_events(n: int) -> List[PrivacyEvent]:
 
     events = []
     for i in range(n):
-        event = PrivacyEvent(
+        event = Event(
             id=str(uuid4()),
             title=f"Dummy Privacy Event {i+1}",
             date=date.today() - timedelta(days=random.randint(0, 365)),

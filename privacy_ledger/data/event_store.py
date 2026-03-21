@@ -4,11 +4,11 @@ import asyncpg
 from typing import List, Optional, Literal
 from datetime import date
 
-from privacy_ledger.schema.events import PrivacyEvent, Topic, Severity, Scope, ImpactType, Filter, Platform
+from privacy_ledger.schema.events import Event, Topic, Severity, Scope, ImpactType, EventFilter, Platform
 
 
 class EventStore:
-    """Async Postgres store for PrivacyEvent with pgvector support, using a connection pool."""
+    """Async Postgres store for Event with pgvector support, using a connection pool."""
 
     def __init__(
         self,
@@ -89,7 +89,7 @@ class EventStore:
                     ON privacy_events USING hnsw (embedding vector_l2_ops)
                 """)
 
-    async def add(self, items: List[PrivacyEvent],embeddings: Optional[List[List[float]]] = None) -> None:
+    async def add(self, items: List[Event],embeddings: Optional[List[List[float]]] = None) -> None:
         if not items:
             return
 
@@ -126,16 +126,16 @@ class EventStore:
 
     async def get(
         self,
-        filter: Optional[Filter] = None ,
+        filter: Optional[EventFilter] = None ,
         limit: Optional[int] = 100,
         offset: int = 0,
         order_by: Literal["created_at", "updated_at", "date", "id"] = "created_at",
         ascending: bool = True,
-    ) -> List[PrivacyEvent]:
+    ) -> List[Event]:
         await self._init_db()
         async with self._pool.acquire() as conn:
             query = "SELECT * FROM privacy_events WHERE TRUE"
-            filter = filter or Filter()
+            filter = filter or EventFilter()
             query, params = self._add_filters(query, filter)
             order_clause = f" ORDER BY {order_by} {'ASC' if ascending else 'DESC'}"
             query += order_clause
@@ -144,7 +144,7 @@ class EventStore:
 
             rows = await conn.fetch(query, *params)
             return [
-                PrivacyEvent(
+                Event(
                     id=r["id"],
                     title=r["title"],
                     date=r["date"],
@@ -164,7 +164,7 @@ class EventStore:
                 for r in rows
             ]
 
-    async def get_by_ids(self, ids: List[str]) -> List[PrivacyEvent]:
+    async def get_by_ids(self, ids: List[str]) -> List[Event]:
         if not ids:
             return []
         await self._init_db()
@@ -173,7 +173,7 @@ class EventStore:
             query = f"SELECT * FROM privacy_events WHERE id IN ({placeholders})"
             rows = await conn.fetch(query, *ids)
             return [
-                PrivacyEvent(
+                Event(
                     id=r["id"],
                     title=r["title"],
                     date=r["date"],
@@ -194,7 +194,7 @@ class EventStore:
             ]
 
     
-    async def update(self,items: List[PrivacyEvent],embeddings: Optional[List[List[float]]] = None) -> None:
+    async def update(self,items: List[Event],embeddings: Optional[List[List[float]]] = None) -> None:
         if not items:
             return
 
@@ -250,17 +250,17 @@ class EventStore:
                 query = f"DELETE FROM privacy_events WHERE id IN ({placeholders})"
                 await conn.execute(query, *ids)
 
-    async def count(self, filter: Optional[Filter] = None) -> int:
+    async def count(self, filter: Optional[EventFilter] = None) -> int:
         await self._init_db()
         async with self._pool.acquire() as conn:
             query = "SELECT COUNT(*) AS count FROM privacy_events WHERE TRUE"
-            filter = filter or Filter()
+            filter = filter or EventFilter()
             query, params = self._add_filters(query, filter)
             row = await conn.fetchrow(query, *params)
             return row["count"]
     
     @staticmethod
-    def _add_filters(query: str, filter: Filter):
+    def _add_filters(query: str, filter: EventFilter):
         params = []
 
         if filter.topic:

@@ -4,7 +4,7 @@ from pydantic import BaseModel, HttpUrl, Field
 
 from privacy_ledger.enums import ImpactType, Topic, Severity, Scope, Platform
 
-class PrivacyEvent(BaseModel):
+class Event(BaseModel):
     id: str
     title: str
     date: date
@@ -21,7 +21,7 @@ class PrivacyEvent(BaseModel):
     created_at: date = Field(default_factory=date.today)
     updated_at: date = Field(default_factory=date.today)
 
-class Filter(BaseModel):
+class EventFilter(BaseModel):
     topic: Optional[str] = None
     actors: Optional[List[str]] = None
     impact_types: Optional[List[str]] = None
