@@ -22,7 +22,7 @@ class Event(BaseModel):
     updated_at: date = Field(default_factory=date.today)
 
 class EventFilter(BaseModel):
-    topic: Optional[str] = None
+    topics: Optional[List[str]] = None
     actors: Optional[List[str]] = None
     impact_types: Optional[List[str]] = None
     tags: Optional[List[str]] = None
