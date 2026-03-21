@@ -6,7 +6,7 @@ from fastapi import FastAPI, HTTPException
 from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 
-from privacy_ledger.event_store import EventStore
+from privacy_ledger.data.event_store import EventStore
 from privacy_ledger.schema.api import SearchEventsRequest, SearchEventsResponse, AddEventsRequest, AddEventsResponse, CountEventsRequest, CountEventsResponse
 
 from api.routes import Routes

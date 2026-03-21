@@ -3,8 +3,8 @@ import asyncio
 
 from dotenv import load_dotenv
 
-from privacy_ledger.event_store import EventStore
-from privacy_ledger.data import generate_events
+from privacy_ledger.data.event_store import EventStore
+from privacy_ledger.data.helpers import generate_events
 
 load_dotenv()
 
