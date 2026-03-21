@@ -5,7 +5,6 @@ from typing import List, Optional, Literal
 from datetime import date
 
 from privacy_ledger.schema.events import PrivacyEvent, Category, Severity, Scope, ImpactType, Filter
-from smartscan.embeds import EmbeddingStore
 
 
 class EventStore:
@@ -27,6 +26,7 @@ class EventStore:
             if not all([host, user, password, database]):
                 raise ValueError("Either dsn or all of host, user, password, database must be provided")
             dsn = f"postgresql://{user}:{password}@{host}:{port}/{database}"
+        self.dsn = dsn
         self.embed_dim = embed_dim
         self._lock = asyncio.Lock()
         self._init_done = False
