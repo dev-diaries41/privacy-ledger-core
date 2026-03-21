@@ -18,13 +18,11 @@ POSTGRES_USER=os.environ.get("POSTGRES_USER")
 POSTGRES_PASSWORD=os.environ.get("POSTGRES_PASSWORD")
 POSTGRES_DB=os.environ.get("POSTGRES_DB")
 
-MAX_UPLOAD_SIZE = 50 * 1024 * 1024  # 50MB
-
 app = FastAPI()
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],          
-    allow_methods=["POST", "OPTIONS", "GET", "PATCH"],
+    allow_methods=["POST"],
     allow_headers=["*"],
     max_age=3600,
 )
