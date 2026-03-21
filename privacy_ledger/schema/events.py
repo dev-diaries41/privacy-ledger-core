@@ -1,6 +1,6 @@
 from datetime import date
 from typing import List, Optional
-from pydantic import BaseModel, HttpUrl
+from pydantic import BaseModel, HttpUrl, Field
 
 from privacy_ledger.enums import ImpactType, Topic, Severity, Scope, Platform
 
@@ -18,8 +18,8 @@ class PrivacyEvent(BaseModel):
     impact_description: str
     source: HttpUrl
     tags: Optional[List[str]] = None
-    created_at: Optional[date] = None
-    updated_at: Optional[date] = None
+    created_at: date = Field(default_factory=date.today)
+    updated_at: date = Field(default_factory=date.today)
 
 class Filter(BaseModel):
     topic: Optional[str] = None
