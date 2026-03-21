@@ -1,8 +1,11 @@
 from enum import Enum
 
-class Category(str, Enum):
-    LEGAL = "legal"
-    TECH = "tech"
+class Topic(str, Enum):
+    LEGAL = "legal"            # Laws, regulations, government actions
+    APPS = "apps"              # Specific applications or software
+    SOCIAL = "social-media"    # Social platforms and networks
+    BUSINESS = "business"      # Companies, corporate practices
+    SECURITY = "security"      # Security incidents, breaches, vulnerabilities
 
 class ImpactType(str, Enum):
     DATA_EXPOSURE = "data_exposure"

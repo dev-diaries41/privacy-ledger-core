@@ -3,7 +3,7 @@ from datetime import date, timedelta
 from typing import List
 from uuid import uuid4
 
-from privacy_ledger.schema.events import PrivacyEvent, Category, Severity, Scope, ImpactType
+from privacy_ledger.schema.events import PrivacyEvent, Topic, Severity, Scope, ImpactType
 
 def generate_events(n: int) -> List[PrivacyEvent]:
     dummy_actors = ["Acme Corp", "Gov Agency", "Privacy Org", "Unknown Entity"]
@@ -18,7 +18,7 @@ def generate_events(n: int) -> List[PrivacyEvent]:
             id=str(uuid4()),
             title=f"Dummy Privacy Event {i+1}",
             date=date.today() - timedelta(days=random.randint(0, 365)),
-            category=random.choice(list(Category)),
+            topic=random.choice(list(Topic)),
             actors=random.sample(dummy_actors, k=random.randint(1, 2)),
             impact_types=random.sample(list(ImpactType), k=random.randint(1, 3)),
             severity=random.choice(list(Severity)),

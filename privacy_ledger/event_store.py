@@ -4,7 +4,7 @@ import asyncpg
 from typing import List, Optional, Literal
 from datetime import date
 
-from privacy_ledger.schema.events import PrivacyEvent, Category, Severity, Scope, ImpactType, Filter
+from privacy_ledger.schema.events import PrivacyEvent, Topic, Severity, Scope, ImpactType, Filter
 
 
 class EventStore:
@@ -47,7 +47,7 @@ class EventStore:
                     id TEXT PRIMARY KEY,
                     title TEXT NOT NULL,
                     date DATE NOT NULL,
-                    category TEXT NOT NULL,
+                    topic TEXT NOT NULL,
                     actors TEXT[] NOT NULL,
                     impact_types TEXT[] NOT NULL,
                     severity INT NOT NULL,
@@ -70,7 +70,7 @@ class EventStore:
         async with self._lock:
             async with self._pool.acquire() as conn:
                 # B-tree indexes
-                await conn.execute("CREATE INDEX IF NOT EXISTS idx_privacy_events_category ON privacy_events(category)")
+                await conn.execute("CREATE INDEX IF NOT EXISTS idx_privacy_events_category ON privacy_events(topic)")
                 await conn.execute("CREATE INDEX IF NOT EXISTS idx_privacy_events_severity ON privacy_events(severity)")
                 await conn.execute("CREATE INDEX IF NOT EXISTS idx_privacy_events_scope ON privacy_events(scope)")
                 await conn.execute("CREATE INDEX IF NOT EXISTS idx_privacy_events_created_at ON privacy_events(created_at)")
@@ -100,7 +100,7 @@ class EventStore:
                         event.id,
                         event.title,
                         event.date,
-                        event.category.value,
+                        event.topic.value,
                         event.actors,
                         [it.value for it in event.impact_types],
                         event.severity.value,
@@ -115,7 +115,7 @@ class EventStore:
                     ))
                 await conn.executemany("""
                     INSERT INTO privacy_events (
-                        id, title, date, category, actors, impact_types,
+                        id, title, date, topic, actors, impact_types,
                         severity, scope, summary, impact_description, source, tags,
                         embedding, created_at, updated_at
                     ) VALUES (
@@ -147,7 +147,7 @@ class EventStore:
                     id=r["id"],
                     title=r["title"],
                     date=r["date"],
-                    category=Category(r["category"]),
+                    topic=Topic(r["topic"]),
                     actors=r["actors"],
                     impact_types=[ImpactType(it) for it in r["impact_types"]],
                     severity=Severity(r["severity"]),
@@ -175,7 +175,7 @@ class EventStore:
                     id=r["id"],
                     title=r["title"],
                     date=r["date"],
-                    category=Category(r["category"]),
+                    topic=Topic(r["topic"]),
                     actors=r["actors"],
                     impact_types=[ImpactType(it) for it in r["impact_types"]],
                     severity=Severity(r["severity"]),
@@ -200,13 +200,13 @@ class EventStore:
                     embedding = embeddings[i] if embeddings else None
                     await conn.execute("""
                         UPDATE privacy_events
-                        SET title=$1, date=$2, category=$3, actors=$4,
+                        SET title=$1, date=$2, topic=$3, actors=$4,
                             impact_types=$5, severity=$6, scope=$7, summary=$8,
                             impact_description=$9, source=$10, tags=$11,
                             embedding=$12, updated_at=$13
                         WHERE id=$14
                     """,
-                    event.title, event.date, event.category.value,
+                    event.title, event.date, event.topic.value,
                     event.actors,
                     [it.value for it in event.impact_types],
                     event.severity.value,
@@ -242,9 +242,9 @@ class EventStore:
     def _add_filters(query: str, filter: Filter):
         params = []
 
-        if filter.category:
-            query += f" AND category = ${len(params)+1}"
-            params.append(filter.category)
+        if filter.topic:
+            query += f" AND topic = ${len(params)+1}"
+            params.append(filter.topic)
         if filter.tags:
             query += f" AND tags @> ${len(params)+1}"
             params.append(filter.tags)

@@ -2,13 +2,13 @@ from datetime import date
 from typing import List, Optional
 from pydantic import BaseModel, HttpUrl
 
-from privacy_ledger.enums import ImpactType, Category, Severity, Scope, Platform
+from privacy_ledger.enums import ImpactType, Topic, Severity, Scope, Platform
 
 class PrivacyEvent(BaseModel):
     id: str
     title: str
     date: date
-    category: Category
+    topic: Topic
     actors: List[str]
     impact_types: List[ImpactType]
     severity: Severity
@@ -22,7 +22,7 @@ class PrivacyEvent(BaseModel):
     updated_at: Optional[date] = None
 
 class Filter(BaseModel):
-    category: Optional[str] = None
+    topic: Optional[str] = None
     actors: Optional[List[str]] = None
     impact_types: Optional[List[str]] = None
     tags: Optional[List[str]] = None
