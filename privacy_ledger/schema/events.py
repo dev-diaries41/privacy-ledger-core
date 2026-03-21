@@ -26,7 +26,7 @@ class Filter(BaseModel):
     actors: Optional[List[str]] = None
     impact_types: Optional[List[str]] = None
     tags: Optional[List[str]] = None
-    platforms: Optional[List[Platform]] = None
+    platforms: Optional[List[str]] = None
     severity: Optional[int] = None
     scope: Optional[str] = None
     created_after: Optional[date] = None
