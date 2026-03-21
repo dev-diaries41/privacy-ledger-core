@@ -4,7 +4,7 @@ import asyncpg
 from typing import List, Optional, Literal
 from datetime import date
 
-from privacy_ledger.schema.events import PrivacyEvent, Topic, Severity, Scope, ImpactType, Filter
+from privacy_ledger.schema.events import PrivacyEvent, Topic, Severity, Scope, ImpactType, Filter, Platform
 
 
 class EventStore:
@@ -56,6 +56,7 @@ class EventStore:
                     impact_description TEXT NOT NULL,
                     source TEXT NOT NULL,
                     tags TEXT[],
+                    platforms TEXT[],
                     embedding VECTOR({self.embed_dim}),
                     created_at DATE,
                     updated_at DATE
@@ -80,6 +81,7 @@ class EventStore:
                 await conn.execute("CREATE INDEX IF NOT EXISTS idx_privacy_events_impact_types ON privacy_events USING GIN(impact_types)")
                 await conn.execute("CREATE INDEX IF NOT EXISTS idx_privacy_events_tags ON privacy_events USING GIN(tags)")
                 await conn.execute("CREATE INDEX IF NOT EXISTS idx_privacy_events_actors ON privacy_events USING GIN(actors)")
+                await conn.execute("CREATE INDEX IF NOT EXISTS idx_privacy_events_platforms ON privacy_events USING GIN(platforms)")
 
                 # pgvector HNSW index for embedding
                 await conn.execute(f"""
@@ -87,46 +89,44 @@ class EventStore:
                     ON privacy_events USING hnsw (embedding vector_l2_ops)
                 """)
 
-    async def add(self, items: List[PrivacyEvent], embeddings: Optional[List[List[float]]] = None) -> None:
+    async def add(self, items: List[PrivacyEvent],embeddings: Optional[List[List[float]]] = None) -> None:
         if not items:
             return
+
         await self._init_db()
+
         async with self._lock:
             async with self._pool.acquire() as conn:
                 data = []
+                keys = list(items[0].model_dump(mode="json").keys())
+
                 for i, event in enumerate(items):
                     embedding = embeddings[i] if embeddings else None
-                    data.append((
-                        event.id,
-                        event.title,
-                        event.date,
-                        event.topic.value,
-                        event.actors,
-                        [it.value for it in event.impact_types],
-                        event.severity.value,
-                        event.scope.value,
-                        event.summary,
-                        event.impact_description,
-                        str(event.source),
-                        event.tags,
-                        embedding,
-                        event.created_at or date.today(),
-                        event.updated_at or date.today()
-                    ))
-                await conn.executemany("""
-                    INSERT INTO privacy_events (
-                        id, title, date, topic, actors, impact_types,
-                        severity, scope, summary, impact_description, source, tags,
-                        embedding, created_at, updated_at
-                    ) VALUES (
-                        $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15
-                    )
+                    event_dict = event.model_dump()
+                    event_dict.update({
+                        "embedding": embedding,
+                        "source": str(event_dict.get("source")),
+                        "topic": event.topic.value,
+                        "severity": event.severity.value,
+                        "scope": event.scope.value,
+                        "impact_types": [it.value for it in event.impact_types],
+                        "platforms": [p.value for p in event.platforms],
+                    })
+
+                    data.append(tuple(event_dict[k] for k in keys))
+
+                await conn.executemany(
+                    f"""
+                    INSERT INTO privacy_events ({', '.join(keys)})
+                    VALUES ({','.join(f"${i+1}" for i in range(len(keys)))})
                     ON CONFLICT (id) DO NOTHING
-                """, data)
+                    """,
+                    data
+                )
 
     async def get(
         self,
-        filter: Filter,
+        filter: Optional[Filter] = None ,
         limit: Optional[int] = 100,
         offset: int = 0,
         order_by: Literal["created_at", "updated_at", "date", "id"] = "created_at",
@@ -135,6 +135,7 @@ class EventStore:
         await self._init_db()
         async with self._pool.acquire() as conn:
             query = "SELECT * FROM privacy_events WHERE TRUE"
+            filter = filter or Filter()
             query, params = self._add_filters(query, filter)
             order_clause = f" ORDER BY {order_by} {'ASC' if ascending else 'DESC'}"
             query += order_clause
@@ -150,6 +151,7 @@ class EventStore:
                     topic=Topic(r["topic"]),
                     actors=r["actors"],
                     impact_types=[ImpactType(it) for it in r["impact_types"]],
+                    platforms=[Platform(p) for p in r["platforms"]],
                     severity=Severity(r["severity"]),
                     scope=Scope(r["scope"]),
                     summary=r["summary"],
@@ -178,6 +180,7 @@ class EventStore:
                     topic=Topic(r["topic"]),
                     actors=r["actors"],
                     impact_types=[ImpactType(it) for it in r["impact_types"]],
+                    platforms=[Platform(p) for p in r["platforms"]],
                     severity=Severity(r["severity"]),
                     scope=Scope(r["scope"]),
                     summary=r["summary"],
@@ -190,34 +193,51 @@ class EventStore:
                 for r in rows
             ]
 
-    async def update(self, items: List[PrivacyEvent], embeddings: Optional[List[List[float]]] = None) -> None:
+    
+    async def update(self,items: List[PrivacyEvent],embeddings: Optional[List[List[float]]] = None) -> None:
         if not items:
             return
+
         await self._init_db()
+
         async with self._lock:
             async with self._pool.acquire() as conn:
                 for i, event in enumerate(items):
                     embedding = embeddings[i] if embeddings else None
+
                     await conn.execute("""
                         UPDATE privacy_events
-                        SET title=$1, date=$2, topic=$3, actors=$4,
-                            impact_types=$5, severity=$6, scope=$7, summary=$8,
-                            impact_description=$9, source=$10, tags=$11,
-                            embedding=$12, updated_at=$13
-                        WHERE id=$14
+                        SET title = $title,
+                            date = $date,
+                            topic = $topic,
+                            actors = $actors,
+                            impact_types = $impact_types,
+                            platforms = $platforms,
+                            severity = $severity,
+                            scope = $scope,
+                            summary = $summary,
+                            impact_description = $impact_description,
+                            source = $source,
+                            tags = $tags,
+                            embedding = $embedding,
+                            updated_at = $updated_at
+                        WHERE id = $id
                     """,
-                    event.title, event.date, event.topic.value,
-                    event.actors,
-                    [it.value for it in event.impact_types],
-                    event.severity.value,
-                    event.scope.value,
-                    event.summary,
-                    event.impact_description,
-                    event.source,
-                    event.tags,
-                    embedding,
-                    event.updated_at or date.today(),
-                    event.id
+                        title=event.title,
+                        date=event.date,
+                        topic=event.topic.value,
+                        actors=event.actors,
+                        impact_types=[it.value for it in event.impact_types],
+                        platforms=event.platforms,
+                        severity=event.severity.value,
+                        scope=event.scope.value,
+                        summary=event.summary,
+                        impact_description=event.impact_description,
+                        source=event.source,
+                        tags=event.tags,
+                        embedding=embedding,
+                        updated_at=event.updated_at or date.today(),
+                        id=event.id
                     )
 
     async def delete(self, ids: List[str]) -> None:
@@ -230,10 +250,11 @@ class EventStore:
                 query = f"DELETE FROM privacy_events WHERE id IN ({placeholders})"
                 await conn.execute(query, *ids)
 
-    async def count(self, filter: Filter) -> int:
+    async def count(self, filter: Optional[Filter] = None) -> int:
         await self._init_db()
         async with self._pool.acquire() as conn:
             query = "SELECT COUNT(*) AS count FROM privacy_events WHERE TRUE"
+            filter = filter or Filter()
             query, params = self._add_filters(query, filter)
             row = await conn.fetchrow(query, *params)
             return row["count"]
@@ -254,6 +275,9 @@ class EventStore:
         if filter.impact_types:
             query += f" AND impact_types @> ${len(params)+1}"
             params.append(filter.impact_types)
+        if filter.platforms:
+            query += f" AND platforms @> ${len(params)+1}"
+            params.append(filter.platforms)
         if filter.severity is not None:
             query += f" AND severity = ${len(params)+1}"
             params.append(filter.severity)
