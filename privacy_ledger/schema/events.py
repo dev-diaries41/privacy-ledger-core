@@ -11,13 +11,13 @@ class PrivacyEvent(BaseModel):
     topic: Topic
     actors: List[str]
     impact_types: List[ImpactType]
+    platforms: List[Platform]
     severity: Severity
     scope: Scope
     summary: str
     impact_description: str
     source: HttpUrl
     tags: Optional[List[str]] = None
-    platforms: Optional[List[Platform]] = None
     created_at: Optional[date] = None
     updated_at: Optional[date] = None
 
