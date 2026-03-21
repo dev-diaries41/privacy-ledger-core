@@ -1,0 +1,17 @@
+# Dirs
+config/
+__pycache__/
+venv/
+db/
+build/
+*.egg-info/
+output/
+dev/
+logs/
+
+# Files
+.env*
+*.onnx
+TODO.md
+.env
+
