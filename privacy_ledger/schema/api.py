@@ -1,7 +1,7 @@
 from pydantic import BaseModel
 from typing import List, Optional, Literal
 
-from privacy_ledger.schema.events import Event, EventFilter
+from privacy_ledger.schema.events import Event, EventFilter, EventsOverview
 
 class EventsPayload(BaseModel):
     events: List[Event]
@@ -27,4 +27,7 @@ class CountEventsRequest(EventFilter):
 
 class CountEventsResponse(BaseModel):
     count: int
+ 
+class EventsOverviewResponse(BaseModel):
+    overview: EventsOverview
  

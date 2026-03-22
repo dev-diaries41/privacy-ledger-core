@@ -7,7 +7,7 @@ from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 
 from privacy_ledger.data.event_store import EventStore
-from privacy_ledger.schema.api import SearchEventsRequest, SearchEventsResponse, AddEventsRequest, AddEventsResponse, CountEventsRequest, CountEventsResponse
+from privacy_ledger.schema.api import SearchEventsRequest, SearchEventsResponse, AddEventsRequest, AddEventsResponse, CountEventsRequest, CountEventsResponse, EventsOverviewResponse
 
 from api.routes import Routes
 
@@ -42,8 +42,12 @@ async def search_events(req: SearchEventsRequest):
     events = await db.get(filter=req.filter, limit=req.limit, offset=req.offset, order_by=req.order_by, ascending=req.ascending)
     return JSONResponse(SearchEventsResponse(events=events).model_dump())
 
-
 @app.post(Routes.COUNT_EVENTS_ENDPOINT)
 async def count_prompts(req: CountEventsRequest):
     count = await db.count(filter=req)
     return JSONResponse(CountEventsResponse(count=count).model_dump())
+
+@app.post(Routes.EVENTS_OVERVIEW_ENDPOINT)
+async def get_overview():
+    overview = await db.get_events_overview(top_n=6)
+    return JSONResponse(EventsOverviewResponse(overview=overview).model_dump())
