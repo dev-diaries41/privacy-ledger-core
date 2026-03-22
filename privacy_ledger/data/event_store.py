@@ -22,11 +22,20 @@ class EventStore:
         min_pool_size: int = 1,
         max_pool_size: int = 10,
     ):
-        if dsn is None:
-            if not all([host, user, password, database]):
-                raise ValueError("Either dsn or all of host, user, password, database must be provided")
-            dsn = f"postgresql://{user}:{password}@{host}:{port}/{database}"
+        if dsn is None and not database:
+            raise ValueError("Either dsn or database must be provided")
+
         self.dsn = dsn
+        self._conn_params = None
+        if dsn is None:
+            self._conn_params = {
+                "user": user,
+                "password": password,
+                "database": database,
+                "host": host,
+                "port": port,
+            }
+
         self.embed_dim = embed_dim
         self._lock = asyncio.Lock()
         self._init_done = False
@@ -37,10 +46,20 @@ class EventStore:
     async def _init_db(self):
         if self._init_done:
             return
+
         if self._pool is None:
-            self._pool = await asyncpg.create_pool(
-                dsn=self.dsn, min_size=self.min_pool_size, max_size=self.max_pool_size
-            )
+            if self.dsn:
+                self._pool = await asyncpg.create_pool(
+                    dsn=self.dsn,
+                    min_size=self.min_pool_size,
+                    max_size=self.max_pool_size,
+                )
+            else:
+                self._pool = await asyncpg.create_pool(
+                    min_size=self.min_pool_size,
+                    max_size=self.max_pool_size,
+                    **self._conn_params,
+                )
         async with self._pool.acquire() as conn:
             await conn.execute(f"""
                 CREATE TABLE IF NOT EXISTS privacy_events (
