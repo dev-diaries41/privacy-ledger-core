@@ -1,5 +1,5 @@
 from datetime import date
-from typing import List, Optional
+from typing import List, Optional, Dict
 from pydantic import BaseModel, HttpUrl, Field
 
 from privacy_ledger.enums import ImpactType, Topic, Severity, Scope, Platform
@@ -33,3 +33,12 @@ class EventFilter(BaseModel):
     created_before: Optional[date] = None
     updated_after: Optional[date] = None
     updated_before: Optional[date] = None
+
+
+class EventsOverview(BaseModel):
+    total_events: int
+    top_actor_counts: Dict[str, int]
+    platform_counts: Dict[str, int]
+    scope_counts: Dict[str, int]
+    impact_type_counts: Dict[str, int]
+    topic_counts: Dict[str, int]
