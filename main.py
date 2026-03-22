@@ -10,19 +10,21 @@ load_dotenv()
 
 POSTGRES_URI = os.environ.get("POSTGRES_URI")
 
-db = EventStore(dsn=POSTGRES_URI, embed_dim=768)
+store = EventStore(dsn=POSTGRES_URI, embed_dim=768)
 
 async def main():
-    count = await db.count()
+    count = await store.count()
     print(f"Initial count: {count}")
 
     # events = await db.get()
     # print(events)
     
     events = generate_events(2)
-    await db.add(events)
+    await store.add(events)
 
-    count = await db.count()
+    count = await store.count()
     print(f"Updated count: {count}")
+
+    print(f"Overview: {await store.get_events_overview()}")
 
 asyncio.run(main())

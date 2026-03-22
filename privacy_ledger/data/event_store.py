@@ -1,14 +1,14 @@
 import asyncio
 import asyncpg
 
-from typing import List, Optional, Literal
+from typing import List, Optional, Literal, Dict
 from datetime import date
 
-from privacy_ledger.schema.events import PrivacyEvent, Topic, Severity, Scope, ImpactType, EventFilter, Platform
+from privacy_ledger.schema.events import  Topic, Severity, Scope, ImpactType, EventFilter, Platform, Event, EventsOverview
 
 
 class EventStore:
-    """Async Postgres store for PrivacyEvent with pgvector support, using a connection pool."""
+    """Async Postgres store for Event with pgvector support, using a connection pool."""
 
     def __init__(
         self,
@@ -89,7 +89,47 @@ class EventStore:
                     ON privacy_events USING hnsw (embedding vector_l2_ops)
                 """)
 
-    async def add(self, items: List[PrivacyEvent],embeddings: Optional[List[List[float]]] = None) -> None:
+    @staticmethod
+    def _add_filters(query: str, filter: EventFilter):
+        params = []
+
+        if filter.topics:
+            query += f" AND topic = ANY(${len(params)+1})"
+            params.append(filter.topics)
+        if filter.tags:
+            query += f" AND tags @> ${len(params)+1}"
+            params.append(filter.tags)
+        if filter.actors:
+            query += f" AND actors @> ${len(params)+1}"
+            params.append(filter.actors)
+        if filter.impact_types:
+            query += f" AND impact_types @> ${len(params)+1}"
+            params.append(filter.impact_types)
+        if filter.platforms:
+            query += f" AND platforms @> ${len(params)+1}"
+            params.append(filter.platforms)
+        if filter.severity is not None:
+            query += f" AND severity = ${len(params)+1}"
+            params.append(filter.severity)
+        if filter.scope:
+            query += f" AND scope = ${len(params)+1}"
+            params.append(filter.scope)
+        if filter.created_after:
+            query += f" AND created_at >= ${len(params)+1}"
+            params.append(filter.created_after)
+        if filter.created_before:
+            query += f" AND created_at <= ${len(params)+1}"
+            params.append(filter.created_before)
+        if filter.updated_after:
+            query += f" AND updated_at >= ${len(params)+1}"
+            params.append(filter.updated_after)
+        if filter.updated_before:
+            query += f" AND updated_at <= ${len(params)+1}"
+            params.append(filter.updated_before)
+
+        return query, params
+    
+    async def add(self, items: List[Event],embeddings: Optional[List[List[float]]] = None) -> None:
         if not items:
             return
 
@@ -131,7 +171,7 @@ class EventStore:
         offset: int = 0,
         order_by: Literal["created_at", "updated_at", "date", "id"] = "created_at",
         ascending: bool = True,
-    ) -> List[PrivacyEvent]:
+    ) -> List[Event]:
         await self._init_db()
         async with self._pool.acquire() as conn:
             query = "SELECT * FROM privacy_events WHERE TRUE"
@@ -144,7 +184,7 @@ class EventStore:
 
             rows = await conn.fetch(query, *params)
             return [
-                PrivacyEvent(
+                Event(
                     id=r["id"],
                     title=r["title"],
                     date=r["date"],
@@ -164,7 +204,7 @@ class EventStore:
                 for r in rows
             ]
 
-    async def get_by_ids(self, ids: List[str]) -> List[PrivacyEvent]:
+    async def get_by_ids(self, ids: List[str]) -> List[Event]:
         if not ids:
             return []
         await self._init_db()
@@ -173,7 +213,7 @@ class EventStore:
             query = f"SELECT * FROM privacy_events WHERE id IN ({placeholders})"
             rows = await conn.fetch(query, *ids)
             return [
-                PrivacyEvent(
+                Event(
                     id=r["id"],
                     title=r["title"],
                     date=r["date"],
@@ -194,7 +234,7 @@ class EventStore:
             ]
 
     
-    async def update(self,items: List[PrivacyEvent],embeddings: Optional[List[List[float]]] = None) -> None:
+    async def update(self,items: List[Event],embeddings: Optional[List[List[float]]] = None) -> None:
         if not items:
             return
 
@@ -258,43 +298,53 @@ class EventStore:
             query, params = self._add_filters(query, filter)
             row = await conn.fetchrow(query, *params)
             return row["count"]
+
     
-    @staticmethod
-    def _add_filters(query: str, filter: EventFilter):
-        params = []
+    async def get_top_actors(self, top_n: int = 10, filter: Optional[EventFilter] = None) -> Dict[str, int]:
+        """Return a dictionary of the top N actors and their counts."""
+        await self._init_db()
+        async with self._pool.acquire() as conn:
+            base_query = "SELECT unnest(actors) AS actor FROM privacy_events WHERE TRUE"
+            filter = filter or EventFilter()
+            base_query, params = self._add_filters(base_query, filter)
+            query = f"""
+                SELECT actor, COUNT(*) AS count
+                FROM ({base_query}) AS sub
+                GROUP BY actor
+                ORDER BY count DESC
+                LIMIT {top_n}
+            """
+            rows = await conn.fetch(query, *params)
+            return {r["actor"]: r["count"] for r in rows}
+        
 
-        if filter.topics:
-            query += f" AND topics @> ${len(params)+1}"
-            params.append(filter.topics)
-        if filter.tags:
-            query += f" AND tags @> ${len(params)+1}"
-            params.append(filter.tags)
-        if filter.actors:
-            query += f" AND actors @> ${len(params)+1}"
-            params.append(filter.actors)
-        if filter.impact_types:
-            query += f" AND impact_types @> ${len(params)+1}"
-            params.append(filter.impact_types)
-        if filter.platforms:
-            query += f" AND platforms @> ${len(params)+1}"
-            params.append(filter.platforms)
-        if filter.severity is not None:
-            query += f" AND severity = ${len(params)+1}"
-            params.append(filter.severity)
-        if filter.scope:
-            query += f" AND scope = ${len(params)+1}"
-            params.append(filter.scope)
-        if filter.created_after:
-            query += f" AND created_at >= ${len(params)+1}"
-            params.append(filter.created_after)
-        if filter.created_before:
-            query += f" AND created_at <= ${len(params)+1}"
-            params.append(filter.created_before)
-        if filter.updated_after:
-            query += f" AND updated_at >= ${len(params)+1}"
-            params.append(filter.updated_after)
-        if filter.updated_before:
-            query += f" AND updated_at <= ${len(params)+1}"
-            params.append(filter.updated_before)
+    async def get_events_overview(self, top_n: int = 10) -> EventsOverview:
+        total_events_task = self.count()
+        top_actors_task = self.get_top_actors(top_n=top_n)
+        topic_tasks = [self.count(EventFilter(topics=[t.value])) for t in Topic]
+        platform_tasks = [self.count(EventFilter(platforms=[p.value])) for p in Platform]
+        impact_type_tasks = [self.count(EventFilter(impact_types=[it.value])) for it in ImpactType]
+        scope_tasks = [self.count(EventFilter(scope=s.value)) for s in Scope]
 
-        return query, params
+        total_events, top_actors, topic_counts_list, platform_counts_list, impact_type_counts_list, scope_counts_list = await asyncio.gather(
+            total_events_task,
+            top_actors_task,
+            asyncio.gather(*topic_tasks),
+            asyncio.gather(*platform_tasks),
+            asyncio.gather(*impact_type_tasks),
+            asyncio.gather(*scope_tasks)
+        )
+
+        topic_counts = {t.value: c for t, c in zip(Topic, topic_counts_list)}
+        platform_counts = {p.value: c for p, c in zip(Platform, platform_counts_list)}
+        impact_type_counts = {it.value: c for it, c in zip(ImpactType, impact_type_counts_list)}
+        scope_counts = {s.value: c for s, c in zip(Scope, scope_counts_list)}
+
+        return EventsOverview(
+            total_events=total_events,
+            top_actor_counts=top_actors,
+            topic_counts=topic_counts,
+            platform_counts=platform_counts,
+            impact_type_counts=impact_type_counts,
+            scope_counts=scope_counts
+        )
