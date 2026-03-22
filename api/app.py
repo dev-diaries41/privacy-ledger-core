@@ -5,6 +5,7 @@ from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.encoders import jsonable_encoder
 
 from privacy_ledger.data.event_store import EventStore
 from privacy_ledger.schema.api import SearchEventsRequest, SearchEventsResponse, AddEventsRequest, AddEventsResponse, CountEventsRequest, CountEventsResponse, EventsOverviewResponse
@@ -40,7 +41,7 @@ async def add_events(req: AddEventsRequest):
 @app.post(Routes.SEARCH_EVENTS_ENDPOINT)
 async def search_events(req: SearchEventsRequest):
     events = await db.get(filter=req.filter, limit=req.limit, offset=req.offset, order_by=req.order_by, ascending=req.ascending)
-    return JSONResponse(SearchEventsResponse(events=events).model_dump())
+    return JSONResponse(jsonable_encoder(SearchEventsResponse(events=events)))
 
 @app.post(Routes.COUNT_EVENTS_ENDPOINT)
 async def count_prompts(req: CountEventsRequest):
