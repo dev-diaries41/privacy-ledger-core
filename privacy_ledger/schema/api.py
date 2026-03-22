@@ -13,7 +13,7 @@ class AddEventsResponse(BaseModel):
     added: int
  
 class SearchEventsRequest(BaseModel):
-    filter: EventFilter
+    filter: Optional[EventFilter] = None
     offset: Optional[int] = 0
     limit: Optional[int] = 25
     order_by: Literal["created_at", "updated_at", "date", "id"] = "created_at"
