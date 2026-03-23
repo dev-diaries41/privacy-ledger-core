@@ -23,7 +23,7 @@ app = FastAPI()
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],          
-    allow_methods=["POST"],
+    allow_methods=["POST", "GET"],
     allow_headers=["*"],
     max_age=3600,
 )
@@ -48,7 +48,7 @@ async def count_prompts(req: CountEventsRequest):
     count = await db.count(filter=req)
     return JSONResponse(CountEventsResponse(count=count).model_dump())
 
-@app.post(Routes.EVENTS_OVERVIEW_ENDPOINT)
+@app.get(Routes.EVENTS_OVERVIEW_ENDPOINT)
 async def get_overview():
     overview = await db.get_events_overview(top_n=6)
     return JSONResponse(EventsOverviewResponse(overview=overview).model_dump())
