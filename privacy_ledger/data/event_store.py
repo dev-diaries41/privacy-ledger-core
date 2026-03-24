@@ -145,6 +145,12 @@ class EventStore:
         if filter.updated_before:
             query += f" AND updated_at <= ${len(params)+1}"
             params.append(filter.updated_before)
+        if filter.start_date:
+            query += f" AND date >= ${len(params)+1}"
+            params.append(filter.start_date)
+        if filter.end_date:
+            query += f" AND date <= ${len(params)+1}"
+            params.append(filter.end_date)
 
         return query, params
     
