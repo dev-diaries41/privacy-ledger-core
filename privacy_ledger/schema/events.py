@@ -14,8 +14,7 @@ class Event(BaseModel):
     platforms: List[Platform]
     severity: Severity
     scope: Scope
-    summary: str
-    impact_description: str
+    summary: str # description of event + impact  
     source: HttpUrl
     tags: Optional[List[str]] = None
     created_at: date = Field(default_factory=date.today)

@@ -29,7 +29,6 @@ def generate_events(n: int) -> List[Event]:
             severity=random.choice(list(Severity)),
             scope=random.choice(list(Scope)),
             summary="This is a short summary of the privacy event.",
-            impact_description="This is a detailed explanation of the privacy impact.",
             source=random.choice(dummy_sources),
             tags=["dummy", "test"],
         )
