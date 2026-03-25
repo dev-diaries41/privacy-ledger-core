@@ -42,3 +42,28 @@ def load_events_from_file(path: str):
 
     events = [Event(**e) for e in events]
     return events
+
+
+def format_event_for_embedding(event: Event) -> str:
+    """
+    Convert an Event object into a structured string suitable for sentence-transformer embedding.
+    """
+    parts = [
+        f"[TITLE] {event.title}",
+        f"[SUMMARY] {event.summary}",
+        f"[TOPIC] {event.topic.value}",
+        f"[SEVERITY] {event.severity.name.lower()}",
+        f"[SCOPE] {event.scope.value}"
+    ]
+
+    if event.actors:
+        parts.append(f"[ACTORS] {', '.join(event.actors)}")
+    if event.impact_types:
+        parts.append(f"[IMPACT_TYPES] {', '.join([impact.value for impact in event.impact_types])}")
+    if event.platforms:
+        parts.append(f"[PLATFORMS] {', '.join([platform.value for platform in event.platforms])}")
+    if event.tags:
+        parts.append(f"[TAGS] {', '.join(event.tags)}")
+
+    return " ".join(parts)
+
