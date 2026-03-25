@@ -33,6 +33,8 @@ class EventFilter(BaseModel):
     created_before: Optional[date] = None
     updated_after: Optional[date] = None
     updated_before: Optional[date] = None
+    start_date: Optional[date] = None
+    end_date: Optional[date] = None
 
 
 class EventsOverview(BaseModel):

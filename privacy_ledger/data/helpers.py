@@ -1,4 +1,5 @@
 import random
+import json
 from datetime import date, timedelta
 from typing import List
 from uuid import uuid4
@@ -34,4 +35,11 @@ def generate_events(n: int) -> List[Event]:
         )
         events.append(event)
 
+    return events
+
+def load_events_from_file(path: str):
+    with open(path, "r") as f:
+        events = json.load(f)
+
+    events = [Event(**e) for e in events]
     return events
